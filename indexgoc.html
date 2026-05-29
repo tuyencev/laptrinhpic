@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>JIG Studio v4</title>
+<script src="./blockky.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Oxanium:wght@300;400;500;600;700;800&family=Fira+Code:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+/* ══════════════════════════════════════════╁E   DESIGN: Industrial dark  ECNC machine vibe
+   Accent: amber + cyan against near-black
+══════════════════════════════════════════╁E*/
+:root{
+  --ink:#06080e;--p1:#0b0f1a;--p2:#101624;--p3:#161e30;--p4:#1c2840;
+  --rim:#1f2e4a;--rim2:#263652;
+  --am:#f0a500;--am2:#ffc040;  /* amber */
+  --cy:#00c8d4;--cy2:#40e0ea;  /* cyan */
+  --gn:#00c878;--rd:#e83a3a;--vi:#9b6ef0;
+  --tx:#ccd6f0;--mx:#7080a0;--dx:#3a4a6a;
+  --mono:'Fira Code',monospace;--ui:'Oxanium',sans-serif;
+  --code:#040608;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+html,body{height:100%;overflow:hidden;}
+body{font-family:var(--ui);background:var(--ink);color:var(--tx);display:flex;flex-direction:column;font-size:13px;}
+
+/* scanline texture overlay */
+body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,.08) 2px,rgba(0,0,0,.08) 4px);pointer-events:none;z-index:9999;}
+
+/* ── HEADER ── */
+header{height:46px;background:var(--p2);border-bottom:2px solid var(--am);display:flex;align-items:center;gap:10px;padding:0 14px;flex-shrink:0;position:relative;}
+header::after{content:'';position:absolute;bottom:-4px;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--am),var(--cy),transparent);opacity:.5;}
+.logo{font-size:18px;font-weight:800;letter-spacing:2px;text-transform:uppercase;color:var(--am);text-shadow:0 0 20px rgba(240,165,0,.4);}
+.logo em{color:var(--cy);font-style:normal;}
+.vtag{font-family:var(--mono);font-size:8px;background:var(--p4);border:1px solid var(--rim);color:var(--cy);border-radius:2px;padding:2px 6px;letter-spacing:1px;}
+.hgap{flex:1;}
+.hbtn{font-family:var(--ui);font-size:10px;font-weight:600;letter-spacing:.5px;text-transform:uppercase;border:none;border-radius:3px;padding:5px 14px;cursor:pointer;display:flex;align-items:center;gap:5px;transition:all .15s;}
+.hbtn-run{background:var(--gn);color:#000;}
+.hbtn-run:hover{background:#40eeaa;box-shadow:0 0 12px rgba(0,200,120,.4);}
+.hbtn-stop{background:var(--rd);color:#fff;}
+.hbtn-dl{background:var(--p4);color:var(--am);border:1px solid var(--rim);}
+.hbtn-dl:hover{background:var(--rim);}
+.hbtn-cp{background:var(--p4);color:var(--tx);border:1px solid var(--rim);}
+.hbtn-cp:hover{background:var(--rim);}
+
+/* ── LAYOUT ── */
+.app{position:relative;display:flex;flex:1;overflow:hidden;}
+
+/* ── LEFT PANEL ── */
+.lp{width:285px;flex-shrink:0;background:var(--p1);border-right:1px solid var(--rim);display:flex;flex-direction:column;overflow:hidden;}
+.lp-tabs{display:flex;background:var(--ink);border-bottom:1px solid var(--rim);}
+.lpt{flex:1;padding:7px 3px;text-align:center;font-size:9px;font-weight:600;letter-spacing:.8px;text-transform:uppercase;cursor:pointer;color:var(--mx);border-bottom:2px solid transparent;transition:all .15s;}
+.lpt.on{color:var(--am);border-bottom-color:var(--am);}
+.lpane{display:none;flex:1;overflow-y:auto;padding:10px;}
+.lpane.on{display:block;}
+.lpane::-webkit-scrollbar{width:3px;}
+.lpane::-webkit-scrollbar-thumb{background:var(--rim);border-radius:2px;}
+
+/* cards */
+.card{background:var(--p3);border:1px solid var(--rim);border-radius:4px;padding:8px 10px;margin-bottom:7px;position:relative;}
+.card:hover{border-color:var(--rim2);}
+.sec-h{display:flex;align-items:center;justify-content:space-between;margin:4px 0 8px;}
+.sec-h span{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--mx);}
+.abtn{font-family:var(--ui);font-size:9px;font-weight:600;background:var(--p4);border:1px solid var(--rim2);color:var(--cy);border-radius:3px;padding:3px 9px;cursor:pointer;letter-spacing:.3px;}
+.abtn:hover{background:var(--rim);}
+.row{display:flex;gap:5px;align-items:center;margin-bottom:5px;}
+.row:last-child{margin-bottom:0;}
+.lbl{font-size:8px;color:var(--mx);width:32px;flex-shrink:0;font-family:var(--mono);}
+.fi{background:var(--ink);border:1px solid var(--rim);color:var(--tx);border-radius:3px;padding:3px 7px;font-size:10px;font-family:var(--mono);flex:1;outline:none;}
+.fi:focus{border-color:var(--cy);}
+.fi.nm{color:var(--am);}
+.fs{background:var(--ink);border:1px solid var(--rim);color:var(--tx);border-radius:3px;padding:3px 5px;font-size:9px;font-family:var(--mono);flex:1;outline:none;}
+.xbtn{position:absolute;top:5px;right:7px;background:none;border:none;color:var(--dx);cursor:pointer;font-size:12px;}
+.xbtn:hover{color:var(--rd);}
+.badge{font-family:var(--mono);font-size:7px;padding:1px 5px;border-radius:2px;font-weight:700;letter-spacing:.5px;}
+.bdi{background:#0a1a30;color:var(--cy);}
+.bdo{background:#0a2010;color:var(--gn);}
+.b595{background:#1a0a30;color:var(--vi);}
+.bvar{background:#201800;color:var(--am);}
+.btsk{background:#1a1000;color:var(--am2);}
+.bcyl{background:#0a1828;color:var(--cy2);}
+.bmot{background:#0a2018;color:var(--gn);}
+
+/* task cards */
+.task-card{background:var(--p3);border:1px solid var(--rim);border-left:3px solid var(--am);border-radius:4px;padding:8px 10px;margin-bottom:7px;position:relative;}
+.task-card:hover{border-color:var(--rim2);border-left-color:var(--am2);}
+.task-pri{display:flex;gap:3px;}
+.pri-dot{width:7px;height:7px;border-radius:50%;border:1px solid var(--rim);cursor:pointer;transition:all .15s;}
+
+/* cylinders */
+.cyl-card{background:var(--p3);border:1px solid var(--rim);border-left:3px solid var(--cy);border-radius:4px;padding:8px 10px;margin-bottom:7px;position:relative;}
+.mot-card{background:var(--p3);border:1px solid var(--rim);border-left:3px solid var(--gn);border-radius:4px;padding:8px 10px;margin-bottom:7px;position:relative;}
+
+/* 595 */
+.sr-cfg{background:var(--p3);border:1px solid var(--rim);border-radius:4px;padding:8px;margin-bottom:8px;}
+.sr-hd{font-size:9px;font-weight:700;color:var(--vi);text-transform:uppercase;letter-spacing:.8px;margin-bottom:6px;}
+.bits-g{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;}
+.bc{background:var(--ink);border:1px solid var(--rim);border-radius:3px;padding:4px 5px;}
+.bc-idx{font-family:var(--mono);font-size:7px;color:var(--dx);}
+.bc-in{background:none;border:none;color:var(--vi);font-family:var(--mono);font-size:9px;width:100%;outline:none;margin-top:1px;}
+.bc-in::placeholder{color:var(--dx);}
+
+/* ── CENTER BLOCKLY ── */
+.bly-area{flex:1;min-width:0;position:relative;}
+#bly{width:100%;height:100%;}
+
+/* ── RIGHT PANEL ── */
+.rp{position:absolute;top:0;bottom:0;right:-340px;width:380px;background:var(--p1);border-left:1px solid var(--rim);display:flex;flex-direction:column;transition:right .25s ease;box-shadow:-12px 0 32px rgba(0,0,0,.35);overflow:hidden;}
+.rp:hover{right:0;}
+.rptabs{display:flex;background:var(--ink);border-bottom:1px solid var(--rim);}
+.rpt{flex:1;padding:10px 6px;text-align:center;font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;cursor:pointer;color:var(--mx);border-bottom:3px solid transparent;transition:all .15s;}
+.rpt.on{color:var(--am);border-bottom-color:var(--am);}
+.rpane{display:none;flex:1;overflow:hidden;flex-direction:column;}
+.rpane.on{display:flex;}
+.decl-panel{flex:1;display:flex;flex-direction:column;overflow:hidden;}
+.decl-panel .lp-tabs{border-bottom:1px solid var(--rim);}
+.decl-panel .lpane{padding:10px;}
+
+/* CODE */
+.cbar{display:flex;align-items:center;justify-content:space-between;padding:6px 12px;background:var(--code);border-bottom:1px solid var(--rim);flex-shrink:0;}
+.cbar-l{font-family:var(--mono);font-size:9px;color:var(--mx);letter-spacing:.5px;}
+.live{display:flex;align-items:center;gap:5px;font-size:9px;color:var(--gn);}
+.ldot{width:5px;height:5px;border-radius:50%;background:var(--gn);animation:pu 2s infinite;}
+@keyframes pu{0%,100%{opacity:1;}50%{opacity:.15;}}
+#code-out{flex:1;overflow-y:auto;padding:12px;font-family:var(--mono);font-size:11px;line-height:1.85;color:#7890b0;background:var(--code);white-space:pre;}
+#code-out::-webkit-scrollbar{width:4px;}
+#code-out::-webkit-scrollbar-thumb{background:var(--rim);}
+.kw{color:#e87060;}.fn{color:#9b9ef0;}.cm{color:#2a3a55;font-style:italic;}.nu{color:#f0c040;}.pp{color:#e09050;}.st{color:#70c080;}.ty{color:#60d0e0;}
+
+/* SIM */
+.sim-body{flex:1;display:flex;flex-direction:column;overflow:hidden;}
+.sim-top{flex-shrink:0;padding:10px;background:var(--p2);border-bottom:1px solid var(--rim);}
+.sim-hrow{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;}
+.sim-ttl{font-size:8px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;color:var(--mx);}
+.sim-bx{font-family:var(--mono);font-size:10px;color:var(--am);background:rgba(240,165,0,.08);border:1px solid rgba(240,165,0,.2);border-radius:2px;padding:2px 8px;}
+.task-monitor{display:flex;flex-direction:column;gap:4px;margin-bottom:8px;}
+.tm-row{display:flex;align-items:center;gap:6px;background:var(--p4);border:1px solid var(--rim);border-radius:3px;padding:5px 8px;}
+.tm-dot{width:7px;height:7px;border-radius:50%;background:var(--dx);transition:all .3s;flex-shrink:0;}
+.tm-dot.run{background:var(--am);box-shadow:0 0 6px var(--am);}
+.tm-dot.wait{background:var(--cy);box-shadow:0 0 4px var(--cy);}
+.tm-dot.done{background:var(--gn);}
+.tm-dot.err{background:var(--rd);}
+.tm-name{font-family:var(--mono);font-size:9px;color:var(--tx);flex:1;}
+.tm-state{font-family:var(--mono);font-size:8px;color:var(--mx);}
+.io-row-sim{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:4px;}
+.ioc{display:flex;align-items:center;gap:4px;background:var(--p4);border:1px solid var(--rim);border-radius:3px;padding:3px 7px;cursor:pointer;transition:all .2s;}
+.ioc:hover{border-color:var(--cy);}
+.ioc.active .ioc-d{box-shadow:0 0 8px var(--cy);}
+.ioc-d{width:7px;height:7px;border-radius:50%;transition:all .25s;}
+.ioc-n{font-family:var(--mono);font-size:8px;color:var(--mx);}
+.sr-bits{display:flex;gap:4px;flex-wrap:wrap;margin-top:6px;}
+.srb{width:32px;height:32px;min-width:32px;border-radius:5px;border:1px solid var(--rim);display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:10px;color:var(--tx);background:var(--p4);transition:all .25s;}
+.srb:hover{border-color:var(--cy);}
+.srb.on{background:var(--vi);border-color:var(--vi);color:#fff;box-shadow:0 0 8px rgba(155,110,240,.35);}
+.sim-btns{display:flex;gap:5px;margin-top:8px;}
+.sbtn{font-family:var(--ui);font-size:9px;font-weight:600;letter-spacing:.5px;border-radius:3px;padding:4px 12px;cursor:pointer;border:none;transition:all .15s;}
+.sbtn-s{background:#0a2010;color:var(--gn);border:1px solid #1a4a20;}
+.sbtn-s:hover{background:#142810;}
+.sbtn-x{background:#200a0a;color:var(--rd);border:1px solid #4a1a1a;}
+
+/* sim log */
+.sim-log-area{flex:1;display:flex;flex-direction:column;overflow:hidden;}
+.sim-lhd{padding:6px 12px;border-bottom:1px solid var(--rim);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
+.sim-lhd span{font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--mx);}
+#sim-log{flex:1;overflow-y:auto;padding:7px 10px;font-family:var(--mono);font-size:9.5px;line-height:2;}
+#sim-log::-webkit-scrollbar{width:3px;}
+#sim-log::-webkit-scrollbar-thumb{background:var(--rim);}
+.le{display:flex;gap:6px;align-items:baseline;}
+.lt{color:var(--dx);font-size:8px;flex-shrink:0;width:40px;}
+.ltk{color:var(--am);font-size:8px;flex-shrink:0;width:60px;}
+.li{color:var(--cy);}.lok{color:var(--gn);}.lw{color:var(--am);}.ler{color:var(--rd);}.ls{color:var(--vi);}
+
+/* SBAR */
+.sbar{height:22px;background:var(--code);border-top:1px solid var(--rim);display:flex;align-items:center;padding:0 12px;gap:14px;flex-shrink:0;}
+.si{font-family:var(--mono);font-size:8px;color:var(--mx);display:flex;align-items:center;gap:4px;}
+.sd{width:5px;height:5px;border-radius:50%;}
+
+#toast{position:fixed;bottom:30px;left:50%;transform:translateX(-50%) translateY(10px);background:var(--gn);color:#000;font-family:var(--ui);font-size:11px;font-weight:700;padding:6px 16px;border-radius:3px;opacity:0;transition:all .25s;pointer-events:none;z-index:10000;}
+#toast.on{opacity:1;transform:translateX(-50%) translateY(0);}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">JIG<em>OS</em></div>
+  <div class="vtag">v4.0</div><div class="vtag">MULTI-TASK</div><div class="vtag">595ÁE</div>
+  <div class="hgap"></div>
+  <input class="fi nm" id="workspace-name-input" placeholder="Tên jig..." title="Nhập tên file jig trước khi lưu" style="width:160px;max-width:160px;margin-right:8px;" autocomplete="off">
+  <button type="button" class="hbtn hbtn-cp" onclick="window.open('/ketnoi_final_1.html', '_blank');">
+  Monitor
+</button>
+  <button type="button" class="hbtn hbtn-run" id="btn-run" onclick="runSim()">▶ RUN</button>
+  <button type="button" class="hbtn hbtn-stop" id="btn-stop" onclick="stopSim()" style="display:none">■ STOP</button>
+  <button type="button" class="hbtn hbtn-dl" onclick="downloadC()">save.C</button>
+  <button type="button" class="hbtn hbtn-cp" onclick="copyCode()">⧁COPY</button>
+  <button type="button" class="hbtn hbtn-cp" onclick="saveWorkspace()">💾 SAVE</button>
+  <button type="button" class="hbtn hbtn-cp" onclick="loadWorkspaceFile()">📂 LOAD</button>
+  <input type="file" id="workspace-file-input" style="display:none" accept=".xml" onchange="handleFileLoad(event)">
+</header>
+
+<div class="app">
+
+
+<div class="bly-area"><div id="bly"></div></div>
+
+<!-- ══════════ RIGHT PANEL ══════════ -->
+<div class="rp">
+  <div class="rptabs">
+    <div class="rpt on" onclick="rt(0,this)">Khai báo</div>
+    <div class="rpt" onclick="rt(1,this)">🖥 SIM</div>
+    <div class="rpt" onclick="rt(2,this)">{ } CODE</div>
+  </div>
+
+  <div class="rpane on" id="rp0">
+    <div class="decl-panel">
+      <div class="lp-tabs">
+        <div class="lpt on" onclick="lt(0,this)">DI</div>
+        <div class="lpt" onclick="lt(1,this)">DO</div>
+        <div class="lpt" onclick="lt(2,this)">CYL</div>
+        <div class="lpt" onclick="lt(3,this)">MOT</div>
+        <div class="lpt" onclick="lt(4,this)">595</div>
+        <div class="lpt" onclick="lt(5,this)">VAR</div>
+        <div class="lpt" onclick="lt(6,this)">TASK</div>
+      </div>
+
+      <div class="lpane on" id="lp0">
+        <div class="sec-h"><span>Digital Input</span><button class="abtn" onclick="addDI()">+ ADD</button></div>
+        <div id="di-list"></div>
+      </div>
+      <div class="lpane" id="lp1">
+        <div class="sec-h"><span>Digital Output GPIO</span><button class="abtn" onclick="addDO()">+ ADD</button></div>
+        <div id="do-list"></div>
+      </div>
+      <div class="lpane" id="lp2">
+        <div class="sec-h"><span>Xi lanh khí nén</span><button class="abtn" onclick="addCyl()">+ ADD</button></div>
+        <div id="cyl-list"></div>
+      </div>
+      <div class="lpane" id="lp3">
+        <div class="sec-h"><span>Motor DC</span><button class="abtn" onclick="addMot()">+ ADD</button></div>
+        <div id="mot-list"></div>
+      </div>
+      <div class="lpane" id="lp4">
+        <div class="sec-h"><span>74HC595 3 IC</span></div>
+        <div class="sr-cfg" style="margin-bottom:6px;">
+          <div class="row"><span class="lbl">DS</span><input class="fi" id="p-ds" value="RC4" style="width:60px"></div>
+          <div class="row"><span class="lbl">SH_CP</span><input class="fi" id="p-sh" value="RC3" style="width:60px"></div>
+          <div class="row"><span class="lbl">ST_CP</span><input class="fi" id="p-st" value="RC5" style="width:60px"></div>
+        </div>
+        <div id="sr-bit-list"></div>
+      </div>
+      <div class="lpane" id="lp5">
+        <div class="sec-h"><span>Biến (uint8/uint16)</span><button class="abtn" onclick="addVar()">+ ADD</button></div>
+        <div id="var-list"></div>
+      </div>
+      <div class="lpane" id="lp6">
+        <div class="sec-h"><span>Task (chạy song song)</span><button class="abtn" onclick="addTask()">+ ADD</button></div>
+        <div style="font-size:9px;color:var(--mx);margin-bottom:8px;line-height:1.6;">Mỗi task = 1 state machine độc lập chạy trong main loop. Dùng EMIT/WAIT đềEđồng bềE</div>
+        <div id="task-list"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="rpane" id="rp1">
+    <div class="sim-body">
+      <div class="sim-top">
+        <div class="sim-hrow">
+          <span class="sim-ttl">TASK MONITOR</span>
+          <span class="sim-bx" id="sim-bx">IDLE</span>
+        </div>
+        <div class="task-monitor" id="task-monitor"></div>
+        <div style="font-size:8px;color:var(--mx);margin-bottom:4px;">INPUT</div>
+        <div class="io-row-sim" id="sim-di-row"></div>
+        <div style="font-size:8px;color:var(--mx);margin:4px 0 2px;">OUTPUT GPIO</div>
+        <div class="io-row-sim" id="sim-do-row"></div>
+        <div style="font-size:8px;color:var(--vi);margin:4px 0 2px;">595 OUTPUT [IC1·IC2·IC3]</div>
+        <div class="sr-bits" id="sim-sr-bits"></div>
+        <div class="sim-btns">
+          <button class="sbtn sbtn-s" onclick="simBtn('START')">▶ START</button>
+          <button class="sbtn sbtn-x" onclick="simBtn('STOP')">■ STOP</button>
+          <span style="font-size:8px;color:var(--mx);margin-left:4px;">ↁEtương tác</span>
+        </div>
+      </div>
+      <div class="sim-log-area">
+        <div class="sim-lhd">
+          <span>Execution Log</span>
+          <button onclick="clearLog()" style="background:none;border:none;color:var(--mx);cursor:pointer;font-size:9px;">✁E</button>
+        </div>
+        <div id="sim-log"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="rpane" id="rp2">
+    <div class="cbar">
+      <span class="cbar-l">C · PIC18F · CCS · COOPERATIVE SCHEDULER</span>
+      <div class="live"><div class="ldot"></div>LIVE</div>
+    </div>
+    <div id="code-out">/* Khai báo ↁEkéo khối ↁEcode sinh tự động */</div>
+  </div>
+</div>
+</div>
+
+<div class="sbar">
+  <div class="si"><span class="sd" id="sd" style="background:var(--gn)"></span><span id="st">Ready</span></div>
+  <div class="si" id="s-blk">0 blocks</div>
+  <div class="si" id="s-tasks">0 tasks</div>
+  <div class="si" id="s-io">DI:0 DO:0 CYL:0 MOT:0</div>
+</div>
+<div id="toast"></div>
+
+<!-- TOOLBOX -->
+<xml id="toolbox" style="display:hide">
+  <category name="⚡ Task" colour="#f0a500">
+    <block type="b_scheduler_root"></block>
+<block type="b_call_task"></block>
+    <block type="b_task_begin"></block>
+    <block type="b_emit"></block>
+    <block type="b_wait_all"></block>
+    <block type="b_wait_any"></block>
+    <block type="b_wait_task_done"></block>
+    <block type="b_task_done"></block>
+    <block type="b_task_restart"></block>
+
+  </category>
+  <category name="🔄 Flow" colour="#f0a500">
+    <block type="b_delay"></block>
+    <block type="b_delay_var_dropdown"></block>
+    <block type="b_loop_n"></block>
+    <block type="b_loop_while"></block>
+    <block type="b_timeout_sensor"></block>
+  </category>
+  <category name="📥 Input / DI" colour="#00c8d4">
+    <block type="b_wait_di_on"></block>
+    <block type="b_wait_di_off"></block>
+    <block type="b_if_multi"></block>
+    <block type="b_cond"></block>
+    <block type="b_var_control_by_btn"></block>
+  </category>
+  <category name="📤 Output / DO" colour="#00c878">
+    <block type="b_do_set"></block>
+    <block type="b_do_clr"></block>
+    <block type="b_do_tog"></block>
+    <block type="b_do_pulse"></block>
+  </category>
+  <category name="🟣 595 Output" colour="#9b6ef0">
+    <block type="b_sr_set"></block>
+    <block type="b_sr_clr"></block>
+    <block type="b_sr_pulse"></block>
+    <block type="b_sr_blink_forever"></block>
+  </category>
+  <category name="🦾 Xi lanh" colour="#40c8e0">
+    <block type="b_cyl_ext"></block>
+    <block type="b_cyl_ret"></block>
+    <block type="b_cyl_wait_ext"></block>
+    <block type="b_cyl_wait_ret"></block>
+  </category>
+  <category name="Motor" colour="#00c878">
+    <block type="b_mot_run_sen"></block>
+    <block type="b_mot_run_time"></block>
+    <block type="b_mot_stop"></block>
+    <block type="b_mot_wait"></block>
+  </category>
+   <category name="LCD" colour="#40c8e0">
+     <block type="b_lcd_goto"></block>
+     <block type="b_lcd_print"></block>
+
+  </category>
+  <category name="𝑥 Biến" colour="#f0c040">
+    <block type="b_var_set"></block>
+    <block type="b_var_inc"></block>
+    <block type="b_var_dec"></block>
+    <block type="b_if_var"></block>
+  </category>
+  <category name="🛑 Control" colour="#e83a3a">
+    <block type="b_err"></block>
+    <block type="b_pass"></block>
+    <block type="b_fail"></block>
+    <block type="b_buzzer"></block>
+  </category>
+</xml>
+
+<script type="module" src="jig_studio_v4.js"></script>
+<script>
+// XML Save/Load functions
+function saveWorkspace() {
+  const ws = window.workspace;
+  if (!ws) {
+    toast('✗ No workspace available');
+    return;
+  }
+  // Build workspace XML and include UI metadata (lists) so projects fully restore
+  const workspaceXml = Blockly.Xml.workspaceToDom(ws);
+  const wrapper = document.createElement('jig');
+  wrapper.appendChild(workspaceXml);
+  const meta = document.createElement('metadata');
+  const metaObj = {
+    diList: window.diList || [],
+    doList: window.doList || [],
+    cylList: window.cylList || [],
+    motList: window.motList || [],
+    varList: window.varList || [],
+    taskList: window.taskList || [],
+    bits595: window.bits595 || []
+  };
+  meta.textContent = JSON.stringify(metaObj);
+  wrapper.appendChild(meta);
+  const xmlStr = Blockly.Xml.domToText(wrapper);
+  const blob = new Blob([xmlStr], { type: 'application/xml' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  const nameInput = document.getElementById('workspace-name-input');
+  const rawName = nameInput ? nameInput.value.trim() : '';
+  const safeName = rawName.replace(/[^a-zA-Z0-9_-]/g, '_') || ('jigstudio_' + Date.now());
+  a.download = safeName + '.xml';
+  a.click();
+  URL.revokeObjectURL(url);
+  toast('✓ Workspace saved: ' + safeName + '.xml');
+}
+
+function loadWorkspaceFile() {
+  document.getElementById('workspace-file-input').click();
+}
+
+function handleFileLoad(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const ws = window.workspace;
+      if (!ws) {
+        toast('✗ No workspace available');
+        return;
+      }
+      const xmlStr = e.target.result;
+      const xml = Blockly.Xml.textToDom ? Blockly.Xml.textToDom(xmlStr) : Blockly.utils.xml.textToDom(xmlStr);
+      // If metadata present, restore UI lists first
+      const metaEl = xml.getElementsByTagName('metadata')[0];
+      if (metaEl && metaEl.textContent) {
+        try {
+          const meta = JSON.parse(metaEl.textContent);
+          if (meta.diList) {
+            if (window.diList && Array.isArray(window.diList)) { window.diList.length = 0; window.diList.push(...meta.diList); }
+            else { window.diList = meta.diList; }
+            if (window.renderDI) window.renderDI();
+          }
+          if (meta.doList) {
+            if (window.doList && Array.isArray(window.doList)) { window.doList.length = 0; window.doList.push(...meta.doList); }
+            else { window.doList = meta.doList; }
+            if (window.renderDO) window.renderDO();
+          }
+          if (meta.cylList) {
+            if (window.cylList && Array.isArray(window.cylList)) { window.cylList.length = 0; window.cylList.push(...meta.cylList); }
+            else { window.cylList = meta.cylList; }
+            if (window.renderCyl) window.renderCyl();
+          }
+          if (meta.motList) {
+            if (window.motList && Array.isArray(window.motList)) { window.motList.length = 0; window.motList.push(...meta.motList); }
+            else { window.motList = meta.motList; }
+            if (window.renderMot) window.renderMot();
+          }
+          if (meta.varList) {
+            if (window.varList && Array.isArray(window.varList)) { window.varList.length = 0; window.varList.push(...meta.varList); }
+            else { window.varList = meta.varList; }
+            if (window.renderVar) window.renderVar();
+          }
+          if (meta.taskList) {
+            if (window.taskList && Array.isArray(window.taskList)) { window.taskList.length = 0; window.taskList.push(...meta.taskList); }
+            else { window.taskList = meta.taskList; }
+            if (window.renderTask) window.renderTask();
+          }
+          if (meta.bits595) {
+            if (window.bits595 && Array.isArray(window.bits595)) { window.bits595.length = 0; window.bits595.push(...meta.bits595); }
+            else { window.bits595 = meta.bits595; }
+            if (window.init595UI) window.init595UI();
+          }
+          if (meta.workspaceName) {
+            const nameInput = document.getElementById('workspace-name-input');
+            if (nameInput) nameInput.value = meta.workspaceName;
+          }
+        } catch (err) {
+          console.warn('Failed to parse metadata', err);
+        }
+      }
+      // Find the workspace xml node (first <xml> child) and import it
+      let workspaceXml = Array.from(xml.children).find((c) => c.tagName && c.tagName.toLowerCase() === 'xml');
+      if (!workspaceXml) {
+        // If the root itself is an <xml> (older format), use it
+        workspaceXml = xml.tagName && xml.tagName.toLowerCase() === 'xml' ? xml : null;
+      }
+      if (workspaceXml) Blockly.Xml.domToWorkspace(workspaceXml, ws);
+      else Blockly.Xml.domToWorkspace(xml, ws);
+      toast('✓ Workspace loaded');
+    } catch (err) {
+      console.error('Load error:', err);
+      toast('✗ Load failed');
+    }
+  };
+  reader.readAsText(file);
+  event.target.value = '';
+}
+
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('on');
+  setTimeout(() => t.classList.remove('on'), 1800);
+}
+</script>
+</body>
+</html>
+

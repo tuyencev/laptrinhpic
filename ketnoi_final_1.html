@@ -1,0 +1,1119 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>PIC Monitor — Industrial Dashboard</title>
+  <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@400;500;600;700&display=swap" rel="stylesheet">
+   <style>
+    :root {
+      --bg:      #0a0e1a;
+      --bg2:     #0f1525;
+      --bg3:     #151d30;
+      --border:  #1e2d4a;
+      --accent:  #00d4ff;
+      --accent2: #00ff9d;
+      --danger:  #ff4d6d;
+      --warning: #ffb703;
+      --text:    #c8d8f0;
+      --text-dim:#4a6080;
+      --bright:  #e8f4ff;
+      --mono: 'Share Tech Mono', monospace;
+      --sans: 'Rajdhani', sans-serif;
+      --glow:   0 0 12px rgba(0,212,255,0.35);
+      --glow-g: 0 0 12px rgba(0,255,157,0.35);
+      --glow-r: 0 0 12px rgba(255,77,109,0.35);
+    }
+
+    *, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--sans);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    body::before {
+      content:'';
+      position:fixed; inset:0;
+      background-image:
+        linear-gradient(rgba(0,212,255,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0,212,255,0.03) 1px, transparent 1px);
+      background-size: 40px 40px;
+      pointer-events:none; z-index:0;
+    }
+
+    /* ── HEADER ── */
+    header {
+      position:relative; z-index:10;
+      display:flex; align-items:center; justify-content:space-between;
+      padding:14px 24px;
+      background:linear-gradient(90deg,#0a0e1a 0%,#0f1a2e 50%,#0a0e1a 100%);
+      border-bottom:1px solid var(--border);
+      box-shadow:0 2px 30px rgba(0,0,0,0.5);
+    }
+
+    .logo { display:flex; align-items:center; gap:12px; }
+    .logo-icon {
+      width:38px; height:38px;
+      border:2px solid var(--accent); border-radius:6px;
+      display:flex; align-items:center; justify-content:center;
+      box-shadow:var(--glow); font-size:18px;
+    }
+    .logo-text { font-size:22px; font-weight:700; letter-spacing:3px; color:var(--bright); text-transform:uppercase; }
+    .logo-sub  { font-family:var(--mono); font-size:10px; color:var(--accent); letter-spacing:2px; }
+
+    .header-right { display:flex; align-items:center; gap:16px; }
+
+    .status-badge {
+      display:flex; align-items:center; gap:8px;
+      padding:6px 14px; border-radius:20px;
+      font-family:var(--mono); font-size:12px;
+      border:1px solid var(--border); background:var(--bg2);
+    }
+    .status-dot {
+      width:8px; height:8px; border-radius:50%;
+      background:var(--text-dim); transition:all 0.3s;
+    }
+    .status-dot.connected { background:var(--accent2); box-shadow:var(--glow-g); animation:pulse 2s infinite; }
+    .status-dot.error     { background:var(--danger);  box-shadow:var(--glow-r); }
+
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+    /* ── TOOLBAR ── */
+    .toolbar {
+      position:relative; z-index:10;
+      display:flex; align-items:center; gap:12px;
+      padding:12px 24px;
+      background:var(--bg2);
+      border-bottom:1px solid var(--border);
+      flex-wrap:wrap;
+    }
+
+    .cmd-input {
+      flex:1; min-width:200px;
+      background:var(--bg3); border:1px solid var(--border);
+      border-radius:6px; padding:8px 14px;
+      font-family:var(--mono); font-size:13px;
+      color:var(--bright); outline:none;
+      transition:border-color 0.2s, box-shadow 0.2s;
+    }
+    .cmd-input:focus { border-color:var(--accent); box-shadow:var(--glow); }
+    .cmd-input::placeholder { color:var(--text-dim); }
+
+    .btn {
+      padding:8px 18px; border-radius:6px; border:none;
+      font-family:var(--sans); font-size:14px; font-weight:600;
+      letter-spacing:1px; cursor:pointer;
+      transition:all 0.2s; text-transform:uppercase;
+    }
+    .btn-primary  { background:transparent; border:1px solid var(--accent);  color:var(--accent);  }
+    .btn-primary:hover  { background:var(--accent);  color:var(--bg); box-shadow:var(--glow);   }
+    .btn-connect  { background:transparent; border:1px solid var(--accent2); color:var(--accent2); }
+    .btn-connect:hover  { background:var(--accent2); color:var(--bg); box-shadow:var(--glow-g); }
+    .btn-danger   { background:transparent; border:1px solid var(--danger);  color:var(--danger);  }
+    .btn-danger:hover   { background:var(--danger);  color:#fff; }
+
+    .mode-switch {
+      display:flex; align-items:center; gap:4px;
+      background:var(--bg3); border:1px solid var(--border);
+      border-radius:6px; padding:4px;
+    }
+    .mode-btn {
+      padding:5px 12px; border-radius:4px; border:none;
+      font-family:var(--sans); font-size:12px; font-weight:600;
+      letter-spacing:1px; cursor:pointer;
+      background:transparent; color:var(--text-dim);
+      transition:all 0.2s; text-transform:uppercase;
+    }
+    .mode-btn.active { background:var(--accent); color:var(--bg); box-shadow:var(--glow); }
+
+    /* ── LAYOUT ── */
+    .main {
+      position:relative; z-index:5;
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap:16px; padding:16px 24px;
+    }
+
+    /* ── PANEL ── */
+    .panel {
+      background:var(--bg2); border:1px solid var(--border);
+      border-radius:10px; overflow:hidden;
+    }
+    .panel-header {
+      display:flex; align-items:center; gap:10px;
+      padding:12px 16px; border-bottom:1px solid var(--border);
+      background:linear-gradient(90deg,rgba(0,212,255,0.05) 0%,transparent 100%);
+    }
+    .panel-header.green { background:linear-gradient(90deg,rgba(0,255,157,0.05) 0%,transparent 100%); }
+    .panel-icon  { font-size:16px; }
+    .panel-title { font-size:13px; font-weight:700; letter-spacing:2px; text-transform:uppercase; color:var(--bright); }
+    .panel-count {
+      margin-left:auto; font-family:var(--mono); font-size:11px;
+      color:var(--text-dim); background:var(--bg3);
+      padding:2px 8px; border-radius:10px;
+    }
+/* ── CODE VIEWER ── */
+    .code-panel { grid-column:1 / -1; }
+    .code-wrap {
+      display:grid; grid-template-columns:1fr 1fr;
+      height:260px;
+    }
+    .code-editor {
+      height:100%; background:#060a12;
+      border:none; border-right:1px solid var(--border);
+      color:var(--text); font-family:var(--mono); font-size:12px; line-height:1.6;
+      padding:10px 14px; resize:none; outline:none; tab-size:2;
+    }
+    .code-editor::placeholder { color:var(--text-dim); }
+    .code-viewer {
+      height:100%; overflow-y:auto;
+      background:#070b14;
+      font-family:var(--mono); font-size:12px; line-height:1.6;
+    }
+    .code-viewer::-webkit-scrollbar { width:4px; }
+    .code-viewer::-webkit-scrollbar-thumb { background:var(--border); border-radius:2px; }
+    .code-line {
+      display:flex; align-items:stretch; min-height:19px;
+      border-left:3px solid transparent;
+    }
+    .code-line.hl {
+      background:rgba(0,212,255,0.12);
+      border-left:3px solid var(--accent);
+    }
+    .line-num {
+      width:38px; min-width:38px; text-align:right; padding:0 8px;
+      font-size:11px; color:var(--text-dim); user-select:none;
+      background:#060a12; border-right:1px solid var(--border);
+    }
+    .code-line.hl .line-num { color:var(--accent); }
+    .line-code { padding:0 12px; white-space:pre; color:var(--text); }
+    .code-line.hl .line-code { color:var(--accent); font-weight:600; }
+    /* ── PIN GRID ── */
+    .pin-grid {
+      display:grid;
+      grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+      gap:6px; padding:12px;
+    }
+
+    /* ── PIN CARD: dòng 1 = id + state, dòng 2 = tên ── */
+    .pin-card {
+      background:var(--bg3); border:1px solid var(--border);
+      border-radius:8px; padding:8px 10px;
+      transition:all 0.25s; position:relative; overflow:hidden;
+    }
+    .pin-card::before {
+      content:''; position:absolute; top:0; left:0;
+      width:3px; height:100%; background:var(--text-dim); transition:all 0.25s;
+    }
+
+    /* INPUT states */
+    .pin-card.in-low::before  { background:var(--accent2); box-shadow:var(--glow-g); }
+    .pin-card.in-low  { border-color:rgba(0,255,157,0.3); background:rgba(0,255,157,0.06); }
+    .pin-card.in-high::before { background:var(--text-dim); }
+
+    /* OUTPUT states */
+    .pin-card.out-on::before { background:var(--accent2); box-shadow:var(--glow-g); }
+    .pin-card.out-on  { border-color:rgba(0,255,157,0.3); background:rgba(0,255,157,0.06); }
+
+    .pin-card.clickable { cursor:pointer; }
+    .pin-card.clickable:hover { transform:translateY(-1px); border-color:var(--accent); }
+
+    /* Dòng 1: id + badge state cùng hàng */
+    .pin-row1 {
+      display:flex; align-items:center; justify-content:space-between;
+      margin-bottom:5px;
+    }
+    .pin-id {
+      font-family:var(--mono); font-size:10px; color:var(--text-dim);
+    }
+
+    /* Badge state nhỏ gọn */
+    .pin-state {
+      display:inline-flex; align-items:center; gap:4px;
+      font-family:var(--mono); font-size:10px;
+      padding:1px 6px; border-radius:4px;
+      background:rgba(255,255,255,0.05); color:var(--text-dim);
+    }
+    .pin-state.s-low  { color:var(--accent2); background:rgba(0,255,157,0.1);  }
+    .pin-state.s-high { color:var(--text-dim); }
+    .pin-state.s-on   { color:var(--accent2); background:rgba(0,255,157,0.1);  }
+    .pin-state.s-off  { color:var(--text-dim); }
+
+    .state-led { width:5px; height:5px; border-radius:50%; background:var(--text-dim); flex-shrink:0; }
+    .s-low  .state-led { background:var(--accent2); box-shadow:0 0 5px var(--accent2); }
+    .s-on   .state-led { background:var(--accent2); box-shadow:0 0 5px var(--accent2); }
+
+    /* Dòng 2: tên pin */
+    .pin-name {
+      font-size:12px; font-weight:600; color:var(--bright);
+      white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+    }
+
+    /* ── VARIABLES ── */
+    .var-grid {
+      display:grid; grid-template-columns:repeat(auto-fill,minmax(140px,1fr));
+      gap:8px; padding:12px;
+    }
+    .var-card {
+      background:var(--bg3); border:1px solid var(--border);
+      border-radius:8px; padding:10px 14px; transition:border-color 0.2s;
+    }
+    .var-card.nonzero { border-color:rgba(255,183,3,0.4); background:rgba(255,183,3,0.06); }
+    .var-key { font-family:var(--mono); font-size:10px; color:var(--text-dim); margin-bottom:4px; text-transform:uppercase; letter-spacing:1px; }
+    .var-val { font-family:var(--mono); font-size:20px; font-weight:700; color:var(--bright); }
+    .var-card.nonzero .var-val { color:var(--warning); }
+
+    /* ── LOG ── */
+    .log-panel { grid-column:1 / -1; }
+
+    .log-area {
+      height:160px; overflow-y:auto;
+      padding:10px 14px;
+      font-family:var(--mono); font-size:12px; line-height:1.7;
+      background:#070b14;
+    }
+    .log-area::-webkit-scrollbar { width:4px; }
+    .log-area::-webkit-scrollbar-thumb { background:var(--border); border-radius:2px; }
+
+    .log-line      { color:#5a8a6a; }
+    .log-line.err  { color:var(--danger); }
+    .log-line.ok   { color:var(--accent2); }
+    .log-line.send { color:var(--accent); }
+    .log-line.sys  { color:var(--warning); }
+
+    .log-footer {
+      display:flex; gap:8px; padding:10px 12px;
+      border-top:1px solid var(--border);
+    }
+    .btn-sm {
+      padding:5px 12px; border-radius:5px;
+      border:1px solid var(--border); background:transparent;
+      color:var(--text-dim); font-family:var(--sans);
+      font-size:12px; font-weight:600; cursor:pointer;
+      transition:all 0.2s; letter-spacing:1px; text-transform:uppercase;
+    }
+    .btn-sm:hover { color:var(--bright); border-color:var(--text-dim); }
+
+    /* ── NOTIFY ── */
+    #notifyOverlay {
+      position:fixed; inset:0;
+      display:none; align-items:flex-end; justify-content:flex-end;
+      padding:24px; z-index:9999; pointer-events:none;
+    }
+    #notifyCard {
+      padding:16px 20px; border-radius:10px;
+      font-family:var(--sans); font-size:14px; font-weight:600;
+      border:1px solid transparent; backdrop-filter:blur(10px);
+      animation:slideIn 0.3s ease; pointer-events:auto;
+    }
+    @keyframes slideIn { from{transform:translateX(40px);opacity:0} to{transform:translateX(0);opacity:1} }
+    #notifyCard.success { background:rgba(0,255,157,0.1); border-color:var(--accent2); color:var(--accent2); }
+    #notifyCard.error   { background:rgba(255,77,109,0.1); border-color:var(--danger);  color:var(--danger);  }
+
+    .empty { padding:30px; text-align:center; font-family:var(--mono); font-size:12px; color:var(--text-dim); }
+
+    @media(max-width:900px) {
+      .main { grid-template-columns:1fr; }
+      .log-panel { grid-column:1; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- NOTIFY -->
+<div id="notifyOverlay">
+  <div id="notifyCard"></div>
+</div>
+
+<!-- HEADER -->
+<header>
+  <div class="logo">
+    <div class="logo-icon">⚙</div>
+    <div>
+      <div class="logo-text">PIC Monitor</div>
+      <div class="logo-sub">Industrial Control Dashboard</div>
+    </div>
+  </div>
+  <div class="header-right">
+    <div class="status-badge">
+      <div class="status-dot" id="statusDot"></div>
+      <span id="statusText" style="font-family:var(--mono);font-size:12px;color:var(--text-dim)">DISCONNECTED</span>
+    </div>
+    <div id="clockEl" style="font-family:var(--mono);font-size:11px;color:var(--text-dim)"></div>
+  </div>
+</header>
+
+<!-- TOOLBAR -->
+<div class="toolbar">
+  <input class="cmd-input" id="commandInput" placeholder="Nhập lệnh (vd: d0=1)" />
+  <button class="btn btn-primary" id="sendBtn">▶ Gửi</button>
+  <button class="btn btn-connect" id="connectBtn">⚡ Kết nối</button>
+
+  <div class="mode-switch">
+    <button class="mode-btn active" id="modeAuto"   onclick="setMode('auto')">🔁 Auto</button>
+    <button class="mode-btn"        id="modeManual" onclick="setMode('manual')">🔄 Manual</button>
+  </div>
+</div>
+
+<!-- MAIN -->
+<div class="main">
+
+  <!-- INPUTS -->
+  <div class="panel">
+    <div class="panel-header">
+      <span class="panel-icon">📥</span>
+      <span class="panel-title">Inputs</span>
+      <span class="panel-count" id="inputCount">0 pins</span>
+    </div>
+    <div class="pin-grid" id="inputGrid">
+      <div class="empty">Chưa có dữ liệu</div>
+    </div>
+  </div>
+
+  <!-- OUTPUTS -->
+  <div class="panel">
+    <div class="panel-header green">
+      <span class="panel-icon">📤</span>
+      <span class="panel-title">Outputs</span>
+      <span class="panel-count" id="outputCount">0 pins</span>
+    </div>
+    <div class="pin-grid" id="outputGrid">
+      <div class="empty">Chưa có dữ liệu</div>
+    </div>
+  </div>
+
+  <!-- VARIABLES -->
+  <div class="panel log-panel">
+    <div class="panel-header">
+      <span class="panel-icon">📊</span>
+      <span class="panel-title">Variables</span>
+    </div>
+    <div class="var-grid" id="varGrid">
+      <div class="empty" style="grid-column:1/-1">Chưa có biến</div>
+    </div>
+  </div>
+
+ 
+
+  <!-- LOG -->
+  <div class="panel log-panel">
+    <div class="panel-header">
+      <span class="panel-icon">📜</span>
+      <span class="panel-title">Serial Log</span>
+      <span class="panel-count" id="logCount">0 lines</span>
+    </div>
+    <div class="log-area" id="logArea"></div>
+    <div class="log-footer">
+      <button class="btn-sm" id="downloadLog">⬇ Export CSV</button>
+      <button class="btn-sm" id="clearLog">✕ Xóa log</button>
+    </div>
+  </div>
+   <!-- CODE VIEWER -->
+  <div class="panel code-panel">
+    <div class="panel-header">
+      <span class="panel-icon">💻</span>
+      <span class="panel-title">C Code Viewer</span>
+      <span class="panel-count" id="hlInfo" style="color:var(--accent)">—</span>
+      <button class="btn-sm" id="clearCode" style="margin-left:8px">✕ Xóa</button>
+    </div>
+    <div class="code-wrap">
+      <!-- Bên trái: paste code vào đây -->
+      <textarea class="code-editor" id="codeEditor"
+        placeholder="Paste C code vào đây...&#10;&#10;Web sẽ tự highlight dòng điều kiện&#10;khớp với trạng thái I/O hiện tại."></textarea>
+      <!-- Bên phải: hiển thị có số dòng + highlight -->
+      <div class="code-viewer" id="codeViewer">
+        <div style="padding:20px;color:var(--text-dim);font-size:11px">
+          Paste code vào bên trái để xem highlight...
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ════════════════════════════════════════════
+//  CONFIG
+// ════════════════════════════════════════════
+const CONFIG = {
+  MAX_FRAME_SIZE:    64 * 1024,
+  MAX_LINE_LENGTH:   2000,
+  FRAME_TIMEOUT_MS:  2000,
+  PROCESS_DELAY_MS:  50,
+  TOGGLE_ACK_TIMEOUT:3000,
+  RENDER_DEBOUNCE_MS:40,
+};
+
+// ════════════════════════════════════════════
+//  STATE
+// ════════════════════════════════════════════
+let port = null, writer = null, reader = null;
+let buffer = "";
+let frameQueue = [];
+let processing = false;
+let notifyTimer = null;
+let textDecoder = new TextDecoder();
+
+// Thứ tự xuất hiện — để đánh index tự động
+let inputOrder  = [];
+let outputOrder = [];
+
+let currentState = {
+  inputs:    {},   // { name: { pin, label, state } }
+  outputs:   {},   // { name: { pinName, pinIndex, label, state } }
+  variables: {}    // { key: value }
+};
+
+let renderRequested = false;
+const logHistory = [];
+const MAX_LOG = 2000;
+const lastHTML  = {};
+
+// ════════════════════════════════════════════
+//  CLOCK
+// ════════════════════════════════════════════
+function updateClock() {
+  const el = document.getElementById('clockEl');
+  if (el) el.textContent = new Date().toLocaleTimeString('vi-VN',{hour12:false});
+}
+setInterval(updateClock, 1000);
+updateClock();
+
+// ════════════════════════════════════════════
+//  LOG
+// ════════════════════════════════════════════
+function appendLog(str, type) {
+  const ts   = new Date().toLocaleTimeString('vi-VN',{hour12:false});
+  const text = String(str);
+  logHistory.push({ ts, text, type: type||'' });
+  if (logHistory.length > MAX_LOG) logHistory.shift();
+
+  const area = document.getElementById('logArea');
+  const div  = document.createElement('div');
+  div.className = 'log-line' + (type ? ' '+type : '');
+  div.textContent = `[${ts}] ${text}`;
+  area.appendChild(div);
+  if (area.children.length > 300) area.removeChild(area.firstChild);
+  area.scrollTop = area.scrollHeight;
+
+  const cnt = document.getElementById('logCount');
+  if (cnt) cnt.textContent = logHistory.length + ' lines';
+}
+
+// ════════════════════════════════════════════
+//  NOTIFY
+// ════════════════════════════════════════════
+function showNotify(type, title, msg) {
+  const overlay = document.getElementById('notifyOverlay');
+  const card    = document.getElementById('notifyCard');
+  card.className = (type === 'error') ? 'error' : 'success';
+  card.innerHTML = `${type==='error'?'✕':'✓'} <strong>${title}</strong> — ${msg}`;
+  overlay.style.display = 'flex';
+  if (notifyTimer) clearTimeout(notifyTimer);
+  notifyTimer = setTimeout(() => overlay.style.display='none', 5500);
+}
+
+// ════════════════════════════════════════════
+//  STATUS UI
+// ════════════════════════════════════════════
+function setStatus(s) {
+  const dot = document.getElementById('statusDot');
+  const txt = document.getElementById('statusText');
+  const btn = document.getElementById('connectBtn');
+  if (s === 'connected') {
+    dot.className = 'status-dot connected';
+    txt.textContent = 'CONNECTED'; txt.style.color = 'var(--accent2)';
+    btn.textContent = '⚡ Ngắt kết nối'; btn.className = 'btn btn-danger';
+  } else {
+    dot.className = 'status-dot';
+    txt.textContent = 'DISCONNECTED'; txt.style.color = 'var(--text-dim)';
+    btn.textContent = '⚡ Kết nối'; btn.className = 'btn btn-connect';
+  }
+}
+
+// ════════════════════════════════════════════
+//  SERIAL — CONNECT / DISCONNECT
+// ════════════════════════════════════════════
+document.getElementById('connectBtn').addEventListener('click', async () => {
+  if (port) {
+    // Ngắt kết nối
+    try {
+      if (writer) { await writer.write(new TextEncoder().encode("d\n")); await writer.close(); writer = null; }
+      if (reader) { await reader.cancel(); reader = null; }
+      await port.close(); port = null;
+    } catch(e) {}
+    setStatus('disconnected');
+    appendLog('Đã ngắt kết nối', 'sys');
+    return;
+  }
+  try {
+    port   = await navigator.serial.requestPort();
+    await port.open({ baudRate: 115200 });
+    reader = port.readable.getReader();
+    writer = port.writable.getWriter();
+    await writer.write(new TextEncoder().encode("g\n"));
+    setStatus('connected');
+    appendLog('✓ Đã kết nối @ 115200 baud', 'ok');
+    readLoop();
+  } catch(e) {
+    appendLog('Lỗi kết nối: ' + e, 'err');
+    port = null;
+  }
+});
+
+window.addEventListener('beforeunload', async () => {
+  try {
+    if (writer) { await writer.write(new TextEncoder().encode("d\n")); await writer.close(); }
+    if (port) await port.close();
+  } catch(e) {}
+});
+
+// ════════════════════════════════════════════
+//  MODE AUTO / MANUAL
+// ════════════════════════════════════════════
+let currentMode = 'auto';
+function setMode(mode) {
+  currentMode = mode;
+  document.getElementById('modeAuto').className   = 'mode-btn' + (mode==='auto'  ?'  active':'');
+  document.getElementById('modeManual').className = 'mode-btn' + (mode==='manual'?' active':'');
+  if (writer) {
+    writer.write(new TextEncoder().encode(mode==='auto'?'a\n':'m\n'));
+    appendLog('📤 Mode: ' + mode, 'send');
+  }
+}
+
+window.addEventListener('load', () => {
+  if (writer) writer.write(new TextEncoder().encode(currentMode==='auto'?'a\n':'m\n'));
+});
+
+// ════════════════════════════════════════════
+//  SEND COMMAND
+// ════════════════════════════════════════════
+async function safeSend(cmd) {
+  if (!writer) { appendLog('Writer not available', 'err'); return; }
+  try { await writer.write(new TextEncoder().encode(cmd)); }
+  catch(e) { appendLog('Send error: ' + e, 'err'); }
+}
+
+document.getElementById('sendBtn').addEventListener('click', async () => {
+  const cmd = document.getElementById('commandInput').value.trim();
+  if (!cmd || !writer) { appendLog('Không có lệnh hoặc chưa kết nối', 'err'); return; }
+  try {
+    await writer.write(new TextEncoder().encode(cmd + '\n'));
+    appendLog('📤 ' + cmd, 'send');
+    document.getElementById('commandInput').value = '';
+  } catch(e) { appendLog('Lỗi gửi: ' + e, 'err'); }
+});
+
+document.getElementById('commandInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') document.getElementById('sendBtn').click();
+});
+
+// ════════════════════════════════════════════
+//  READ LOOP
+// ════════════════════════════════════════════
+async function readLoop() {
+  while (true) {
+    try {
+      const { value, done } = await reader.read();
+      if (done) break;
+      if (!value) continue;
+      const chunk = textDecoder.decode(value, { stream: true });
+      buffer += chunk;
+      appendLog(chunk.replace(/\r?\n/g,' ').trim());
+      extractFrames();
+    } catch(err) {
+      appendLog('readLoop error: ' + err, 'err');
+      break;
+    }
+  }
+}
+
+// ════════════════════════════════════════════
+//  FRAME EXTRACTION
+// ════════════════════════════════════════════
+function safeSplitLines(s) { return s.split(/\r?\n/).filter(l => l !== undefined); }
+
+function extractFrames() {
+  // scan for bare ERR / OK outside frames
+  const lines = buffer.split(/\r?\n/);
+  for (const line of lines) {
+    const l = line.trim();
+    if (!l) continue;
+    if (l.startsWith('ERR')) { appendLog('⚠ PIC ERR: '+l,'err'); showNotify('error','PIC ERROR',l); }
+    else if (l.startsWith('OK')) { appendLog('✓ PIC OK: '+l,'ok'); showNotify('success','PIC OK',l); }
+  }
+
+  let beginIdx = buffer.indexOf("BEGIN");
+  while (beginIdx !== -1) {
+    const endIdx = buffer.indexOf("END", beginIdx + 5);
+    if (endIdx === -1) break;
+    const frame = buffer.substring(beginIdx, endIdx + 3);
+    frameQueue.push(frame);
+    buffer = buffer.substring(endIdx + 3);
+    beginIdx = buffer.indexOf("BEGIN");
+  }
+  processNextFrame();
+}
+
+// ════════════════════════════════════════════
+//  FRAME QUEUE
+// ════════════════════════════════════════════
+async function processNextFrame() {
+  if (processing || frameQueue.length === 0) return;
+  processing = true;
+  try {
+    const frame = frameQueue.shift();
+    await handleFrame(frame);
+    await new Promise(r => setTimeout(r, CONFIG.PROCESS_DELAY_MS));
+  } catch(e) { appendLog('processNextFrame error: '+e,'err'); }
+  finally {
+    processing = false;
+    if (frameQueue.length) processNextFrame();
+  }
+}
+
+// ════════════════════════════════════════════
+//  FRAME PARSER
+//  Format từ PIC:
+//    BEGIN
+//    IN  cam_bien1 = HIGH   (hoặc = 1)
+//    OUT xy_lanh_a=1
+//    VAR key=value
+//    CRC=xxxx   (tùy chọn)
+//    END
+// ════════════════════════════════════════════
+async function handleFrame(frameText) {
+  if (!frameText || typeof frameText !== 'string') return;
+  const rawLines = safeSplitLines(frameText);
+  if (rawLines.length === 0) return;
+  if (!rawLines[0].trim().startsWith('BEGIN')) { appendLog('Frame header invalid: '+rawLines[0]); return; }
+
+  const bodyLines = rawLines.slice(1, rawLines.length-1)
+                            .map(l => l.trim())
+                            .filter(l => l !== '');
+
+  // Kiểm tra ERR / OK ở đầu frame
+  if (bodyLines.length > 0) {
+    const first = bodyLines[0];
+    if (first.startsWith('ERR')) {
+      appendLog('⚠ PIC ERR: '+first,'err');
+      showNotify('error','PIC ERROR',first);
+      return;
+    }
+    if (first.startsWith('OK')) {
+      appendLog('✓ PIC OK: '+first,'ok');
+      showNotify('success','PIC OK',first);
+      bodyLines.shift();
+    }
+  }
+
+  // Loại bỏ dòng CRC
+  const crcIdx = bodyLines.findIndex(l => /^CRC\s*=/i.test(l));
+  if (crcIdx !== -1) bodyLines.splice(crcIdx, 1);
+
+  const parsed = { inputs:{}, outputs:{}, variables:{} };
+
+  for (let raw of bodyLines) {
+    if (!raw || raw.length > CONFIG.MAX_LINE_LENGTH) continue;
+
+    // ── IN cam_bien1 = HIGH | IN cam_bien1 = 1 ──
+    let m = raw.match(/^IN\s+([A-Za-z0-9_]+)\s*=\s*(HIGH|LOW|1|0)$/i);
+    if (m) {
+      const name  = m[1];
+      const state = (m[2].toUpperCase()==='HIGH' || m[2]==='1') ? '1' : '0';
+      if (!inputOrder.includes(name)) inputOrder.push(name);
+      const pin = inputOrder.indexOf(name);
+      parsed.inputs[name] = { pin, label: name, state };
+      continue;
+    }
+
+    // ── OUT xy_lanh_a=1 | OUT xy_lanh_a = 0 ──
+    m = raw.match(/^OUT\s+([A-Za-z0-9_]+)\s*=\s*(\d+)$/i);
+    if (m) {
+      const name  = m[1];
+      const state = m[2] === '1' ? '1' : '0';
+      if (!outputOrder.includes(name)) outputOrder.push(name);
+      const idx = outputOrder.indexOf(name);
+      parsed.outputs[name] = { pinName: name, pinIndex: idx, label: name, state };
+      continue;
+    }
+
+    // ── VAR key=value ──
+    m = raw.match(/^([\w\[\]\.]+)\s*=\s*(.+)$/);
+    if (m) {
+      const key = m[1].replace(/\[|\]/g,'_');
+      parsed.variables[key] = m[2];
+      continue;
+    }
+
+    appendLog('? ' + raw);
+  }
+
+  // Merge vào currentState
+  const newState = {
+    inputs:    { ...currentState.inputs },
+    outputs:   { ...currentState.outputs },
+    variables: { ...currentState.variables }
+  };
+  for (const [k,v] of Object.entries(parsed.inputs))  newState.inputs[k]    = v;
+  for (const [k,v] of Object.entries(parsed.outputs)) {
+    if (v.pinIndex == null && currentState.outputs[k]?.pinIndex != null)
+      v.pinIndex = currentState.outputs[k].pinIndex;
+    newState.outputs[k] = v;
+  }
+  for (const [k,v] of Object.entries(parsed.variables)) newState.variables[k] = v;
+
+  currentState = newState;
+  scheduleRender();
+}
+
+// ════════════════════════════════════════════
+//  RENDER (debounced)
+// ════════════════════════════════════════════
+function scheduleRender() {
+  if (renderRequested) return;
+  renderRequested = true;
+  setTimeout(() => { renderRequested = false; renderAll(); }, CONFIG.RENDER_DEBOUNCE_MS);
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function setHTML(id, html) {
+  if (lastHTML[id] !== html) { document.getElementById(id).innerHTML = html; lastHTML[id] = html; }
+}
+
+function renderAll() {
+  renderInputs();
+  renderOutputs();
+  renderSwitches();
+  renderVariables();
+  updateCodeHighlight();
+}
+
+// ── Inputs: B0 | cam_bien1 | HIGH/LOW ──
+// LOW = xanh (active/có tín hiệu), HIGH = xám
+function renderInputs() {
+  const entries = Object.entries(currentState.inputs).sort((a,b)=>a[1].pin-b[1].pin);
+  document.getElementById('inputCount').textContent = entries.length + ' pins';
+
+  if (!entries.length) { setHTML('inputGrid','<div class="empty">Chưa có dữ liệu</div>'); return; }
+
+  const html = entries.map(([k,d]) => {
+    const low = d.state === '0';
+    return `<div class="pin-card ${low?'in-low':'in-high'}">
+      <div class="pin-row1">
+        <span class="pin-id">B${d.pin}</span>
+        <span class="pin-state ${low?'s-low':'s-high'}">
+          <span class="state-led"></span>${low?'LOW':'HIGH'}
+        </span>
+      </div>
+      <div class="pin-name" title="${escapeHtml(d.label)}">${escapeHtml(d.label)}</div>
+    </div>`;
+  }).join('');
+  setHTML('inputGrid', html);
+}
+
+// ── Outputs: d0 | xy_lanh_a | ON/OFF ──
+function renderOutputs() {
+  const entries = Object.entries(currentState.outputs).sort((a,b)=>a[1].pinIndex-b[1].pinIndex);
+  document.getElementById('outputCount').textContent = entries.length + ' pins';
+
+  if (!entries.length) { setHTML('outputGrid','<div class="empty">Chưa có dữ liệu</div>'); return; }
+
+  const html = entries.map(([k,d]) => {
+    const on = d.state === '1';
+    return `<div class="pin-card clickable ${on?'out-on':''}" onclick="toggleOutput('${escapeHtml(k)}')">
+      <div class="pin-row1">
+        <span class="pin-id">d${d.pinIndex}</span>
+        <span class="pin-state ${on?'s-on':'s-off'}">
+          <span class="state-led"></span>${on?'ON':'OFF'}
+        </span>
+      </div>
+      <div class="pin-name" title="${escapeHtml(d.label)}">${escapeHtml(d.label)}</div>
+    </div>`;
+  }).join('');
+  setHTML('outputGrid', html);
+}
+
+// ── Quick Switch: đã bỏ ──
+function renderSwitches() {}
+
+// ── Variables ──
+function renderVariables() {
+  const entries = Object.entries(currentState.variables);
+  if (!entries.length) { setHTML('varGrid','<div class="empty" style="grid-column:1/-1">Chưa có biến</div>'); return; }
+
+  const html = entries.map(([k,v]) => {
+    const nonzero = (Number(v) !== 0 && !isNaN(Number(v)));
+    return `<div class="var-card ${nonzero?'nonzero':''}">
+      <div class="var-key">${escapeHtml(k)}</div>
+      <div class="var-val">${escapeHtml(String(v))}</div>
+    </div>`;
+  }).join('');
+  setHTML('varGrid', html);
+}
+
+// ════════════════════════════════════════════
+//  TOGGLE OUTPUT (optimistic + ACK)
+// ════════════════════════════════════════════
+window.toggleOutput = async function(pinName) {
+  if (!writer) { appendLog('Chưa kết nối','err'); return; }
+  const outEntry = currentState.outputs[pinName];
+  if (!outEntry) { appendLog('Output not found: '+pinName,'err'); return; }
+
+  const newState = outEntry.state === '1' ? '0' : '1';
+  outEntry.state = newState;
+  scheduleRender();
+
+  const cmd = `d${outEntry.pinIndex}=${newState}\n`;
+  try {
+    await safeSend(cmd);
+    appendLog('📤 Toggle: '+cmd.trim(),'send');
+  } catch(e) {
+    appendLog('Lỗi toggle: '+e,'err');
+    outEntry.state = newState==='1'?'0':'1';
+    scheduleRender();
+    return;
+  }
+
+  // Chờ ACK từ PIC
+  const ok = await new Promise(resolve => {
+    let resolved = false;
+    const iv = setInterval(() => {
+      const fresh = currentState.outputs[pinName];
+      if (fresh && fresh.state === newState) { resolved=true; resolve(true); }
+    }, 150);
+    setTimeout(() => { if (!resolved){clearInterval(iv);resolve(false);}else clearInterval(iv); }, CONFIG.TOGGLE_ACK_TIMEOUT);
+  });
+
+  if (!ok) {
+    appendLog('⚠ No ACK — rollback','err');
+    outEntry.state = newState==='1'?'0':'1';
+    scheduleRender();
+    showNotify('error','Toggle failed',`No ACK from PIC for ${outEntry.pinName}`);
+  } else {
+    appendLog('✓ ACK received','ok');
+  }
+};
+
+// ════════════════════════════════════════════
+//  CODE VIEWER — SMART HIGHLIGHT
+// ════════════════════════════════════════════
+
+let codeLines = [];
+let highlightedLines = [];
+
+document.getElementById('codeEditor').addEventListener('input', () => {
+  codeLines = document.getElementById('codeEditor').value.split('\n');
+  renderCodeViewer(highlightedLines);
+});
+
+document.getElementById('clearCode').addEventListener('click', () => {
+  document.getElementById('codeEditor').value = '';
+  codeLines = [];
+  highlightedLines = [];
+  document.getElementById('codeViewer').innerHTML =
+    '<div style="padding:20px;color:var(--text-dim);font-size:11px">Paste code vào bên trái để xem highlight...</div>';
+  document.getElementById('hlInfo').textContent = '—';
+});
+
+// Render viewer — hlLines là mảng index dòng cần highlight
+function renderCodeViewer(hlLines = []) {
+  if (!codeLines.length) return;
+  const hlSet = new Set(hlLines);
+  const viewer = document.getElementById('codeViewer');
+
+  const html = codeLines.map((line, i) => {
+    const isHl = hlSet.has(i);
+    const safeCode = escapeHtml(line) || ' ';
+    return `<div class="code-line${isHl?' hl':''}" id="cl_${i}">
+      <span class="line-num">${i+1}</span>
+      <span class="line-code">${safeCode}</span>
+    </div>`;
+  }).join('');
+
+  viewer.innerHTML = html;
+
+  // Scroll đến dòng highlight đầu tiên
+  if (hlLines.length > 0) {
+    const el = viewer.querySelector(`#cl_${hlLines[0]}`);
+    if (el) el.scrollIntoView({ block:'center', behavior:'smooth' });
+  }
+}
+
+// ── SMART MATCHING ENGINE ──
+// Highlight nhiều dòng if() cùng score cao nhất + precision score
+function findMatchLines() {
+
+  if (!codeLines.length) return [];
+
+  const activeLines = [];
+
+  const conditions = [];
+
+  // INPUTS
+  Object.entries(currentState.inputs).forEach(([name, d]) => {
+    conditions.push({
+      name: name.toLowerCase(),
+      values: [
+        d.state === '1' ? 'high' : 'low',
+        d.state === '1' ? '1' : '0'
+      ]
+    });
+  });
+
+  // OUTPUTS
+  Object.entries(currentState.outputs).forEach(([name, d]) => {
+    conditions.push({
+      name: name.toLowerCase(),
+      values: [
+        d.state === '1' ? 'on' : 'off',
+        d.state === '1' ? '1' : '0'
+      ]
+    });
+  });
+
+  // VARIABLES
+  Object.entries(currentState.variables).forEach(([name, val]) => {
+    conditions.push({
+      name: name.toLowerCase(),
+      values: [String(val).toLowerCase()]
+    });
+  });
+
+  codeLines.forEach((line, i) => {
+
+    if (!/if\s*\(/i.test(line)) return;
+
+    const lower = line.toLowerCase();
+
+    let totalCond = 0;
+    let matched   = 0;
+
+    for (const c of conditions) {
+
+      if (!lower.includes(c.name))
+        continue;
+
+      totalCond++;
+
+      let ok = false;
+
+      for (const v of c.values) {
+
+        if (lower.includes(`${c.name}==${v}`)) ok = true;
+        if (lower.includes(`${c.name} == ${v}`)) ok = true;
+
+        if (
+          lower.match(
+            new RegExp(`${c.name}\\s*[><=!]+\\s*${v}`)
+          )
+        ) ok = true;
+
+        // !sensor
+        if (
+          (v === '0' || v === 'low' || v === 'off')
+          &&
+          lower.includes(`!${c.name}`)
+        ) ok = true;
+      }
+
+      if (ok) matched++;
+    }
+
+    // >= 70% điều kiện đúng thì highlight
+    if (
+      totalCond > 0 &&
+      matched / totalCond >= 0.7
+    ) {
+      activeLines.push(i);
+    }
+  });
+
+  return activeLines;
+}
+
+// Gọi highlight mỗi khi state thay đổi
+function updateCodeHighlight() {
+  if (!codeLines.length) return;
+
+  const lines = findMatchLines();
+
+  // So sánh với lần trước, không re-render nếu giống
+  const same = lines.length === highlightedLines.length &&
+               lines.every((l, i) => l === highlightedLines[i]);
+  if (same) return;
+
+  highlightedLines = lines;
+  renderCodeViewer(lines);
+
+  const info = document.getElementById('hlInfo');
+  if (lines.length > 0) {
+    info.textContent = lines.length === 1
+      ? `► dòng ${lines[0] + 1}`
+      : `► dòng ${lines.map(l => l+1).join(', ')}`;
+    info.style.color = 'var(--accent)';
+  } else {
+    info.textContent = '—';
+    info.style.color = 'var(--text-dim)';
+  }
+}
+
+// ════════════════════════════════════════════
+//  LOG CONTROLS
+// ════════════════════════════════════════════
+document.getElementById('downloadLog').addEventListener('click', () => {
+  const csv = 'Time,Type,Message\n' +
+    logHistory.map(r=>`"${r.ts}","${r.type}","${r.text.replace(/"/g,'""')}"`).join('\n');
+  const blob = new Blob([csv],{type:'text/csv;charset=utf-8;'});
+  const url  = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href=url; a.download='plc_log.csv';
+  document.body.appendChild(a); a.click(); a.remove();
+  URL.revokeObjectURL(url);
+});
+
+document.getElementById('clearLog').addEventListener('click', () => {
+  logHistory.length = 0;
+  document.getElementById('logArea').innerHTML = '';
+  document.getElementById('logCount').textContent = '0 lines';
+  Object.keys(lastHTML).forEach(k => delete lastHTML[k]);
+});
+
+// ════════════════════════════════════════════
+//  INIT
+// ════════════════════════════════════════════
+appendLog('System ready. Nhấn "Kết nối" để bắt đầu.', 'sys');
+window._internal = { CONFIG, currentState, frameQueue };
+
+
+// AUTO LOAD CODE FROM ARDUBLOCKLY
+
+window.addEventListener("load", function () {
+
+  var savedCode =
+    localStorage.getItem("monitor_code");
+
+  if (!savedCode) return;
+
+  var editor =
+    document.getElementById("codeEditor");
+
+  editor.value = savedCode;
+
+  codeLines = savedCode.split('\n');
+
+  renderCodeViewer([]);
+
+  updateCodeHighlight();
+});
+
+</script>
+</body>
+</html>
